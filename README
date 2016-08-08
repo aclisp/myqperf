@@ -16,3 +16,5 @@ Notes
       does not support the RDMA tests.
     * Running "make clean" does not seem to clean up everything.  Run
       "./cleanup" instead.
+
+    * Modified by Homer Huang.
