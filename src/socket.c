@@ -738,6 +738,20 @@ set_socket_buffer_size(int fd)
         error(SYS, "Failed to set receive buffer size on socket");
 }
 
+static void
+get_socket_buffer_size(int fd)
+{
+    int size;
+    int optlen = sizeof(size);
+
+    if (getsockopt(fd, SOL_SOCKET, SO_SNDBUF, &size, &optlen) < 0)
+        error(SYS, "Failed to get send buffer size on socket");
+    debug("    send buffer size on socket: %d", size);
+
+    if (getsockopt(fd, SOL_SOCKET, SO_RCVBUF, &size, &optlen) < 0)
+        error(SYS, "Failed to get recv buffer size on socket");
+    debug("    recv buffer size on socket: %d", size);
+}
 
 /*
  * Given an open socket, return the port associated with it.  There must be a
