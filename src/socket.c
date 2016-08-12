@@ -76,6 +76,7 @@ static char    *kind_name(KIND kind);
 static int      recv_full(int fd, void *ptr, int len);
 static int      send_full(int fd, void *ptr, int len);
 static void     set_socket_buffer_size(int fd);
+static void     get_socket_buffer_size(int fd);
 static void     stream_client_bw(KIND kind);
 static void     stream_client_lat(KIND kind);
 static void     stream_server_bw(KIND kind);
@@ -285,6 +286,7 @@ stream_client_bw(KIND kind)
     }
     stop_test_timer();
     exchange_results();
+    get_socket_buffer_size(sockFD);
     free(buf);
     close(sockFD);
     show_results(BANDWIDTH);
@@ -319,6 +321,7 @@ stream_server_bw(KIND kind)
     }
     stop_test_timer();
     exchange_results();
+    get_socket_buffer_size(sockFD);
     free(buf);
     if (sockFD >= 0)
         close(sockFD);
@@ -742,7 +745,7 @@ static void
 get_socket_buffer_size(int fd)
 {
     int size;
-    int optlen = sizeof(size);
+    socklen_t optlen = sizeof(size);
 
     if (getsockopt(fd, SOL_SOCKET, SO_SNDBUF, &size, &optlen) < 0)
         error(SYS, "Failed to get send buffer size on socket");
