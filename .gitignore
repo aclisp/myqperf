@@ -1,0 +1,9 @@
+.vscode/
+.idea/
+a.out
+*.iml
+.deps/
+*.o
+src/qperf
+src/qperf.1
+autom4te.cache/

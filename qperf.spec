@@ -7,8 +7,8 @@ Group:          Networking/Diagnostic
 Source:         http://www.openfabrics.org/downloads/qperf/%{name}-%{version}.tar.gz
 Url:            http://www.openfabrics.org
 BuildRoot:      %{_tmppath}/%{name}-%{version}-build
-BuildRequires:  libibverbs-devel
-BuildRequires:  librdmacm-devel
+#BuildRequires:  libibverbs-devel
+#BuildRequires:  librdmacm-devel
 
 %description
 Measure socket and RDMA performance.
