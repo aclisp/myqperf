@@ -85,6 +85,7 @@ static int      send_full(int fd, void *ptr, int len);
 static void     set_socket_buffer_size(int fd);
 static void     get_socket_buffer_size(int fd);
 static void     get_socket_tcp_info(int fd);
+static void     print_tcp_info_header();
 static void     stream_client_bw(KIND kind);
 static void     stream_client_lat(KIND kind);
 static void     stream_server_bw(KIND kind);
@@ -285,6 +286,7 @@ stream_client_bw(KIND kind)
     if (pid == -1)
         error(SYS, "stream_client_bw: can not fork");
     if (pid == 0) {  /* child */
+        print_tcp_info_header();
         while (!Finished) {
             get_socket_tcp_info(sockFD);
             sleep(1);
@@ -791,11 +793,12 @@ get_socket_buffer_size(int fd)
 static void
 get_socket_tcp_info(int fd)
 {
+    int sndbuf, rcvbuf;
     struct tcp_info info;
     socklen_t optlen = sizeof(struct tcp_info);
     if (getsockopt(fd, SOL_TCP, TCP_INFO, &info, &optlen) < 0)
         error(SYS, "Failed to get tcp info on socket");
-    printf("    %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u\n",
+    printf("    %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u",
         info.tcpi_total_retrans,
         info.tcpi_rtt,
         info.tcpi_rttvar,
@@ -813,6 +816,18 @@ get_socket_tcp_info(int fd)
         info.tcpi_retransmits,
         info.tcpi_snd_wscale,
         info.tcpi_rcv_wscale);
+    optlen = sizeof(int);
+    if (getsockopt(fd, SOL_SOCKET, SO_SNDBUF, &sndbuf, &optlen) < 0)
+        error(SYS, "Failed to get send buffer size on socket");
+    if (getsockopt(fd, SOL_SOCKET, SO_RCVBUF, &rcvbuf, &optlen) < 0)
+        error(SYS, "Failed to get recv buffer size on socket");
+    printf(" %d %d\n", sndbuf, rcvbuf);
+}
+
+static void
+print_tcp_info_header()
+{
+    printf("    xmit rtt rttv rto cwnd ssth ord rrtt rspa una sack lost retr fack rexm sw rw sq rq\n");
 }
 
 /*
