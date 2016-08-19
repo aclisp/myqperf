@@ -35,9 +35,16 @@
 #define _GNU_SOURCE
 #include <errno.h>
 #include <netdb.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netinet/tcp.h>
+#include <signal.h>
 #include "qperf.h"
 
 
@@ -77,6 +84,7 @@ static int      recv_full(int fd, void *ptr, int len);
 static int      send_full(int fd, void *ptr, int len);
 static void     set_socket_buffer_size(int fd);
 static void     get_socket_buffer_size(int fd);
+static void     get_socket_tcp_info(int fd);
 static void     stream_client_bw(KIND kind);
 static void     stream_client_lat(KIND kind);
 static void     stream_server_bw(KIND kind);
@@ -268,8 +276,23 @@ stream_client_bw(KIND kind)
 {
     char *buf;
     int sockFD;
+    pid_t pid;
+    int err;
 
     client_init(&sockFD, kind);
+
+    pid = fork();
+    if (pid == -1)
+        error(SYS, "stream_client_bw: can not fork");
+    if (pid == 0) {  /* child */
+        while (!Finished) {
+            get_socket_tcp_info(sockFD);
+            sleep(1);
+        }
+        close(sockFD);
+        exit(0);
+    }
+
     buf = qmalloc(Req.msg_size);
     sync_test();
     while (!Finished) {
@@ -284,6 +307,15 @@ stream_client_bw(KIND kind)
         LStat.s.no_bytes += n;
         LStat.s.no_msgs++;
     }
+
+    /* send SIGALRM to child so that Finished=1 */
+    err = kill(pid, SIGALRM);
+    if (err == -1)
+        error(SYS, "stream_client_bw: can not kill child");
+    pid = waitpid(pid, NULL, 0);
+    if (pid == -1)
+        error(SYS, "stream_client_bw: can not wait child terminate");
+
     stop_test_timer();
     exchange_results();
     get_socket_buffer_size(sockFD);
@@ -749,11 +781,38 @@ get_socket_buffer_size(int fd)
 
     if (getsockopt(fd, SOL_SOCKET, SO_SNDBUF, &size, &optlen) < 0)
         error(SYS, "Failed to get send buffer size on socket");
-    debug("    send buffer size on socket: %d", size);
+    printf("  * send buffer size on socket: %d\n", size);
 
     if (getsockopt(fd, SOL_SOCKET, SO_RCVBUF, &size, &optlen) < 0)
         error(SYS, "Failed to get recv buffer size on socket");
-    debug("    recv buffer size on socket: %d", size);
+    printf("  * recv buffer size on socket: %d\n", size);
+}
+
+static void
+get_socket_tcp_info(int fd)
+{
+    struct tcp_info info;
+    socklen_t optlen = sizeof(struct tcp_info);
+    if (getsockopt(fd, SOL_TCP, TCP_INFO, &info, &optlen) < 0)
+        error(SYS, "Failed to get tcp info on socket");
+    printf("    %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u\n",
+        info.tcpi_total_retrans,
+        info.tcpi_rtt,
+        info.tcpi_rttvar,
+        info.tcpi_rto,
+        info.tcpi_snd_cwnd,
+        info.tcpi_snd_ssthresh,
+        info.tcpi_reordering,
+        info.tcpi_rcv_rtt,
+        info.tcpi_rcv_space,
+        info.tcpi_unacked,
+        info.tcpi_sacked,
+        info.tcpi_lost,
+        info.tcpi_retrans,
+        info.tcpi_fackets,
+        info.tcpi_retransmits,
+        info.tcpi_snd_wscale,
+        info.tcpi_rcv_wscale);
 }
 
 /*
