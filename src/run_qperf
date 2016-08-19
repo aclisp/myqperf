@@ -1,0 +1,28 @@
+#!/bin/bash
+
+set +x
+set -e
+
+NETSTAT=$(netstat -s)
+SEGM_XMIT0=$(echo "$NETSTAT" | grep 'segments retransmited' | sed -nr 's/    ([0-9]+) segments retransmited/\1/p')
+LOST_XMIT0=$(echo "$NETSTAT" | grep 'TCPLostRetransmit' | sed -nr 's/    TCPLostRetransmit: ([0-9]+)/\1/p')
+FAST_XMIT0=$(echo "$NETSTAT" | grep 'fast retransmits' | sed -nr 's/    ([0-9]+) fast retransmits/\1/p')
+FORW_XMIT0=$(echo "$NETSTAT" | grep 'forward retransmits' | sed -nr 's/    ([0-9]+) forward retransmits/\1/p')
+SSTA_XMIT0=$(echo "$NETSTAT" | grep 'retransmits in slow start' | sed -nr 's/    ([0-9]+) retransmits in slow start/\1/p')
+
+
+./qperf --debug -v -t 30 -m 64000 61.160.36.120 tcp_bw
+
+
+NETSTAT=$(netstat -s)
+SEGM_XMIT1=$(echo "$NETSTAT" | grep 'segments retransmited' | sed -nr 's/    ([0-9]+) segments retransmited/\1/p')
+LOST_XMIT1=$(echo "$NETSTAT" | grep 'TCPLostRetransmit' | sed -nr 's/    TCPLostRetransmit: ([0-9]+)/\1/p')
+FAST_XMIT1=$(echo "$NETSTAT" | grep 'fast retransmits' | sed -nr 's/    ([0-9]+) fast retransmits/\1/p')
+FORW_XMIT1=$(echo "$NETSTAT" | grep 'forward retransmits' | sed -nr 's/    ([0-9]+) forward retransmits/\1/p')
+SSTA_XMIT1=$(echo "$NETSTAT" | grep 'retransmits in slow start' | sed -nr 's/    ([0-9]+) retransmits in slow start/\1/p')
+
+echo "segments retransmited: $((SEGM_XMIT1-SEGM_XMIT0))"
+echo "tcp lost retransmited: $((LOST_XMIT1-LOST_XMIT0))"
+echo "tcp fast retransmited: $((FAST_XMIT1-FAST_XMIT0))"
+echo "tcp forward retransmi: $((FORW_XMIT1-FORW_XMIT0))"
+echo "retransmits in slow s: $((SSTA_XMIT1-SSTA_XMIT0))"
